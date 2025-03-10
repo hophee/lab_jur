@@ -14,7 +14,8 @@
 
 ##  Ход работы  
 1. Скачан референс (удобнее всего делать wget [отсюда](https://console.cloud.google.com/storage/browser/genomics-public-data))
-2. Проведено QC. Единственная проблема бимодального распределения GC-контента [скорее всего связана](https://www.biostars.org/p/175540/) с использованием Agilent sureselect v6. ![картинка](qc.png)
+2. Проведено QC. Единственная проблема бимодального распределения GC-контента [скорее всего связана](https://www.biostars.org/p/175540/) с использованием Agilent sureselect v6. 
+![картинка](qc.png)
 3. Скачаны bed файлы для экзома (качать [здесь](https://earray.chem.agilent.com/), требуется ргеистрация, bed файлы искать в разделе *Find design*)
 4. Написан [скрипт](make_vcf.sh) для обработки fastq файлов в vcf. В конце скрипта варианты фильтруются по качеству.
 5. Загрузка .vcf файлов в [wANNOVAR](https://wannovar.wglab.org/) и [VEP](https://www.ensembl.org/Tools/VEP). Результаты обработки скачаны и названы *annovar.csv* и *vep.txt* соответственно.
