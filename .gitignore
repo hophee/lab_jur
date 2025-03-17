@@ -1,0 +1,5 @@
+**/*.vcf
+**/*.csv
+**/*.txt
+**/*.Rproj
+.Rproj.user
