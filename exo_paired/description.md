@@ -29,7 +29,14 @@ chr20	50594589	50594590	TG	-	RIPOR3	frameshift deletion	NA
 chr22	26496858	26496858	G	A	TFIP11	stopgain	rs374892403
 ```
 
-Из найденных вариантов наибольший интерес представляет вставка в третьем экзоне гена BOD1, ответственном за ориентацию сестринских хроматид в митозе, что может быть связано с образованием опухоли путём формирования хромосомной нестабильности. Вариант не встречается в БД и при использовании Varsome/Franklin.
+Из найденных вариантов наибольший интерес представляет вставка в третьем экзоне гена BOD1, ответственном за ориентацию сестринских хроматид в митозе, что может быть связано с образованием опухоли путём формирования хромосомной нестабильности. Вариант не встречается в БД и при использовании Varsome/Franklin. Вставка была обработана через blast со следующим результатом:
+```
+>XM_047443198.1:28-92 PREDICTED: Homo sapiens biorientation of chromosomes in cell division protein 1 (LOC124905450), mRNA
+CAGGAATGGAATCCTACAATGAACAAAAACCAATTGCGAAATGGTTTGAGGCAGAGTGTGGTTCA
+>AC208950.3:16625-16689 Homo sapiens FOSMID clone ABC10-43645600F20 from chromosome 18, complete sequence
+CAGGAATGGAATCCTACAATGAACAAAAACCAATTGCGAAATGGTTTGAGGCAGAGTGTGGTTCA
+```
+
 
 3. Колинг соматических вариантов с помощью Mutect2 и фильтрация проводились по [скрипту](tumor_to_vcf.sh). Подбор параметров для фильтрации проходил с использование [небольшого скрипта](mean.sh)
 
