@@ -1,0 +1,171 @@
+{
+  "sample": {
+    "require": [],
+    "reject": []
+  },
+  "genes": [],
+  "variant": {
+    "operator": "and",
+    "rules": [
+      {
+        "column": "base__so",
+        "test": "select",
+        "value": [
+          "MIS"
+        ],
+        "negate": false
+      },
+      {
+        "operator": "or",
+        "rules": [
+          {
+            "column": "gnomad__af",
+            "test": "lessThanEq",
+            "value": 0.01,
+            "negate": false
+          },
+          {
+            "column": "gnomad3__af",
+            "test": "lessThanEq",
+            "value": 0.01,
+            "negate": false
+          },
+          {
+            "column": "gnomad4__af",
+            "test": "lessThanEq",
+            "value": 0.01,
+            "negate": false
+          }
+        ],
+        "negate": false
+      },
+      {
+        "operator": "or",
+        "rules": [
+          {
+            "column": "cadd_exome__pp3_pathogenic",
+            "test": "select",
+            "value": [
+              "Moderate"
+            ],
+            "negate": true
+          },
+          {
+            "column": "bayesdel__pp3_pathogenic",
+            "test": "select",
+            "value": [
+              "Moderate",
+              "Strong"
+            ],
+            "negate": true
+          },
+          {
+            "column": "sift__prediction",
+            "test": "select",
+            "value": [
+              "Damaging"
+            ],
+            "negate": false
+          },
+          {
+            "column": "lrt__lrt_pred",
+            "test": "select",
+            "value": [
+              "Deleterious"
+            ],
+            "negate": false
+          },
+          {
+            "column": "alphamissense__am_class",
+            "test": "select",
+            "value": [
+              "likely_pathogenic"
+            ],
+            "negate": false
+          },
+          {
+            "column": "provean__prediction",
+            "test": "select",
+            "value": [
+              "Damaging"
+            ],
+            "negate": false
+          }
+        ],
+        "negate": false
+      },
+      {
+        "operator": "and",
+        "rules": [
+          {
+            "column": "metarnn__pred",
+            "test": "stringContains",
+            "value": "Damaging",
+            "negate": false
+          },
+          {
+            "column": "metasvm__pred",
+            "test": "select",
+            "value": [
+              "Damaging"
+            ],
+            "negate": false
+          },
+          {
+            "column": "metalr__pred",
+            "test": "select",
+            "value": [
+              "Damaging"
+            ],
+            "negate": false
+          }
+        ],
+        "negate": false
+      },
+      {
+        "operator": "or",
+        "rules": [
+          {
+            "column": "cadd_exome__bp4_benign",
+            "test": "select",
+            "value": [
+              "Moderate",
+              "Strong"
+            ],
+            "negate": true
+          },
+          {
+            "column": "alphamissense__bp4_benign",
+            "test": "hasData",
+            "value": null,
+            "negate": true
+          },
+          {
+            "column": "bayesdel__bp4_benign",
+            "test": "select",
+            "value": [
+              "Moderate"
+            ],
+            "negate": true
+          },
+          {
+            "column": "alphamissense__am_class",
+            "test": "select",
+            "value": [
+              "likely_benign"
+            ],
+            "negate": true
+          }
+        ],
+        "negate": false
+      }
+    ],
+    "negate": false
+  },
+  "smartfilter": {},
+  "samplefilter": {
+    "operator": "and",
+    "rules": [],
+    "negate": false
+  }
+}

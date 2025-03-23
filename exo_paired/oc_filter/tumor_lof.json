@@ -1,0 +1,89 @@
+{
+  "sample": {
+    "require": [],
+    "reject": []
+  },
+  "genes": [],
+  "variant": {
+    "operator": "and",
+    "rules": [
+      {
+        "column": "base__so",
+        "test": "select",
+        "value": [
+          "FSI",
+          "FSD",
+          "MLO"
+        ],
+        "negate": false
+      },
+      {
+        "operator": "or",
+        "rules": [
+          {
+            "column": "gnomad__af",
+            "test": "lessThan",
+            "value": 0.01,
+            "negate": false
+          },
+          {
+            "column": "gnomad3__af",
+            "test": "lessThan",
+            "value": 0.01,
+            "negate": false
+          },
+          {
+            "column": "gnomad4__af",
+            "test": "lessThanEq",
+            "value": 0.01,
+            "negate": false
+          }
+        ],
+        "negate": false
+      },
+      {
+        "operator": "or",
+        "rules": [
+          {
+            "column": "cosmic__variant_count",
+            "test": "hasData",
+            "value": null,
+            "negate": false
+          },
+          {
+            "column": "cscape_coding__score",
+            "test": "hasData",
+            "value": null,
+            "negate": false
+          },
+          {
+            "column": "funseq2__score",
+            "test": "hasData",
+            "value": null,
+            "negate": false
+          },
+          {
+            "column": "cgc__class",
+            "test": "hasData",
+            "value": null,
+            "negate": false
+          },
+          {
+            "column": "dbcid__evidence",
+            "test": "hasData",
+            "value": null,
+            "negate": false
+          }
+        ],
+        "negate": false
+      }
+    ],
+    "negate": false
+  },
+  "smartfilter": {},
+  "samplefilter": {
+    "operator": "and",
+    "rules": [],
+    "negate": false
+  }
+}

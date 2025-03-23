@@ -1,0 +1,137 @@
+{
+  "sample": {
+    "require": [],
+    "reject": []
+  },
+  "genes": [],
+  "variant": {
+    "operator": "and",
+    "rules": [
+      {
+        "column": "base__so",
+        "test": "select",
+        "value": [
+          "MIS"
+        ],
+        "negate": false
+      },
+      {
+        "operator": "or",
+        "rules": [
+          {
+            "column": "gnomad__af",
+            "test": "lessThan",
+            "value": 0.05,
+            "negate": false
+          },
+          {
+            "column": "gnomad3__af",
+            "test": "lessThan",
+            "value": 0.05,
+            "negate": false
+          },
+          {
+            "column": "gnomad4__af",
+            "test": "lessThan",
+            "value": 0.05,
+            "negate": false
+          }
+        ],
+        "negate": false
+      },
+      {
+        "operator": "or",
+        "rules": [
+          {
+            "column": "cscape_coding__score",
+            "test": "greaterThan",
+            "value": 0.5,
+            "negate": false
+          },
+          {
+            "column": "cosmic__variant_count",
+            "test": "hasData",
+            "value": null,
+            "negate": false
+          },
+          {
+            "column": "cgc__class",
+            "test": "hasData",
+            "value": null,
+            "negate": false
+          },
+          {
+            "column": "dbcid__evidence",
+            "test": "hasData",
+            "value": null,
+            "negate": false
+          }
+        ],
+        "negate": false
+      },
+      {
+        "operator": "or",
+        "rules": [
+          {
+            "column": "metasvm__pred",
+            "test": "select",
+            "value": [
+              "Damaging"
+            ],
+            "negate": false
+          },
+          {
+            "column": "metarnn__pred",
+            "test": "stringContains",
+            "value": "Damaging",
+            "negate": false
+          },
+          {
+            "operator": "or",
+            "rules": [
+              {
+                "column": "alphamissense__am_class",
+                "test": "select",
+                "value": [
+                  "likely_pathogenic"
+                ],
+                "negate": false
+              },
+              {
+                "column": "sift__pp3_pathogenic",
+                "test": "select",
+                "value": [
+                  "Moderate"
+                ],
+                "negate": false
+              },
+              {
+                "column": "polyphen2__hdiv_pred",
+                "test": "equals",
+                "value": "D",
+                "negate": false
+              },
+              {
+                "column": "cadd_exome__pp3_pathogenic",
+                "test": "select",
+                "value": [
+                  "Moderate"
+                ],
+                "negate": false
+              }
+            ],
+            "negate": false
+          }
+        ],
+        "negate": false
+      }
+    ],
+    "negate": false
+  },
+  "smartfilter": {},
+  "samplefilter": {
+    "operator": "and",
+    "rules": [],
+    "negate": false
+  }
+}

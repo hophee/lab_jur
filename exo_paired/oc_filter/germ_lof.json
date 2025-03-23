@@ -1,0 +1,79 @@
+{
+  "sample": {
+    "require": [],
+    "reject": []
+  },
+  "genes": [],
+  "variant": {
+    "operator": "and",
+    "rules": [
+      {
+        "column": "base__so",
+        "test": "select",
+        "value": [
+          "FSI",
+          "FSD",
+          "MLO",
+          "STG",
+          "STL"
+        ],
+        "negate": false
+      },
+      {
+        "operator": "or",
+        "rules": [
+          {
+            "column": "gnomad__af",
+            "test": "lessThanEq",
+            "value": 0.01,
+            "negate": false
+          },
+          {
+            "column": "gnomad3__af",
+            "test": "lessThanEq",
+            "value": 0.01,
+            "negate": false
+          },
+          {
+            "column": "gnomad4__af",
+            "test": "lessThanEq",
+            "value": 0.01,
+            "negate": false
+          }
+        ],
+        "negate": false
+      },
+      {
+        "operator": "and",
+        "rules": [
+          {
+            "column": "cadd_exome__bp4_benign",
+            "test": "hasData",
+            "value": null,
+            "negate": true
+          },
+          {
+            "column": "bayesdel__bp4_benign",
+            "test": "hasData",
+            "value": null,
+            "negate": true
+          },
+          {
+            "column": "alphamissense__bp4_benign",
+            "test": "hasData",
+            "value": null,
+            "negate": true
+          }
+        ],
+        "negate": false
+      }
+    ],
+    "negate": false
+  },
+  "smartfilter": {},
+  "samplefilter": {
+    "operator": "and",
+    "rules": [],
+    "negate": false
+  }
+}
