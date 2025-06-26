@@ -1,0 +1,11 @@
+library(tidyverse)
+
+cns <- read_tsv("tumor_sample_with_rg.somatic.call.cns")
+cns_loss <- cns %>% filter(cn<2)
+cns_gain <- cns %>% filter(cn>2)
+cna <- cns_gain %>% select(chromosome, start, end, cn) %>% mutate(nMinor=2)
+colnames(cna) <- c('Chromosome', 'Start', 'End', 'nMajor', 'nMinor')
+cna_add <- cns_loss %>% select(chromosome, start, end, cn) %>% mutate(nMajor=2) %>% select(chromosome, start, end, nMajor, cn)
+colnames(cna_add) <- c('Chromosome', 'Start', 'End', 'nMajor', 'nMinor')
+cna <- rbind(cna, cna_add)
+write_tsv(cna, file='cna.tsv')

@@ -1,6 +1,9 @@
 **/*.vcf
+**/*.vcf.gz
 **/*.csv
 **/*.txt
 **/*.cns
 **/*.Rproj
+**/*.Rproj.user
+**/*.tsv
 .Rproj.user
