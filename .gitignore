@@ -8,3 +8,5 @@
 **/*.Rproj.user
 **/*.tsv
 .Rproj.user
+./reserv
+reserv/*
