@@ -10,3 +10,7 @@
 .Rproj.user
 ./reserv
 reserv/*
+bakt/bakt_files
+**/*.fas
+**/*.fasta
+**/*.fs
