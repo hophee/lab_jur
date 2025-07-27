@@ -6,11 +6,13 @@
 **/*.cns
 **/*.Rproj
 **/*.Rproj.user
+**/*..Rhistory
 **/*.tsv
 .Rproj.user
 ./reserv
 reserv/*
 bakt/bakt_files
+bakt/folding
 **/*.fas
 **/*.fasta
 **/*.fs
