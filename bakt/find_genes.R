@@ -15,20 +15,49 @@ eczv <- eczv %>%
     names_from = db, 
     values_from = id,
     values_fill = NA,
-    values_fn = ~ paste(unique(.x), collapse = "; ")
-  )
+    values_fn = ~ paste(unique(.x), collapse = "; "))
+entr <- bitr(
+  eczv$gene,
+  fromType = "SYMBOL",
+  toType = "ENTREZID",
+  OrgDb = org.EcK12.eg.db) %>% rename('SYMBOL' = 'gene')
+eczv <- left_join(eczv, entr, by='gene')
+keggs <- bitr_kegg(eczv$ENTREZID, fromType='ncbi-geneid', toType='kegg', organism='eco', drop = TRUE) %>% rename('ncbi-geneid' = 'ENTREZID')
+eczv <- left_join(eczv, keggs, by='ENTREZID')
 
-#nd - neighbor distance
-get_plots <- function(nd, pcut=1, qcut=1){
+get_neighbor <- function(nd){
   idxes <- which(eczv$gene == 'naRNA4')
   right_neighbors <- eczv %>% dplyr::slice(outer((1:nd),idxes, '+') %>% as.vector()) %>% dplyr::filter(gene!='naRNA4') %>% mutate(side='right')
   left_neighbors <- eczv %>% dplyr::slice(outer((-nd:-1),idxes, '+') %>% as.vector()) %>% dplyr::filter(gene!='naRNA4')%>% mutate(side='left')
-  neighbors <- rbind(right_neighbors, left_neighbors) %>% dplyr::arrange(start)
-  go_right <- neighbors %>% dplyr::filter(side=='right') %>% pull(GO) %>% na.omit() %>% paste0('GO:', .)
-  go_left <- neighbors %>% dplyr::filter(side=='left') %>% pull(GO) %>% na.omit() %>% paste0('GO:', .)
+  neighbors <- rbind(right_neighbors, left_neighbors) %>% dplyr::arrange(start) %>% distinct(start, .keep_all = TRUE)
+  return(neighbors)
+}
+
+get_goplot <- function(genelist, ont_type, side_num, nd, pcut_gp=0.05, qcut_gp=1, sc=15){
+  types_int <- c('BP', 'MF', 'CC')
+  onts <- c('Biological Process', 'Molecular Function', 'Cellular Component')
+  side <- c('Right', 'Left')
+  plot <- enrichGO(gene = genelist, 
+           OrgDb = org.EcK12.eg.db,
+           keyType = "ENTREZID", 
+           ont = types_int[ont_type],
+           pvalueCutoff = pcut_gp,
+           pAdjustMethod = "BH",
+           qvalueCutoff = qcut_gp,
+           readable = TRUE) %>% goplot(showCategory = sc) +
+    ggtitle(paste0(side[side_num], ' genes, ',onts[ont_type] ,' onthology, nd=', as.character(nd)))+
+    theme(plot.title = element_text(hjust = 0.5))
+  return(plot)
+}
+
+#nd - neighbor distance
+get_plots <- function(nd, pcut=1, qcut=1){
+  neighbors <- get_neighbor(nd)
+  go_right <- neighbors %>% dplyr::filter(side=='right') %>% pull(ENTREZID) %>% na.omit() %>% as.vector()
+  go_left <- neighbors %>% dplyr::filter(side=='left') %>% pull(ENTREZID) %>% na.omit()%>% as.vector()
   ego_right <- enrichGO(gene = go_right, 
                         OrgDb = org.EcK12.eg.db,
-                        keyType = "GO", 
+                        keyType = "ENTREZID", 
                         ont = "ALL",
                         pvalueCutoff = pcut,
                         pAdjustMethod = "BH",
@@ -40,40 +69,13 @@ get_plots <- function(nd, pcut=1, qcut=1){
           split = "ONTOLOGY", 
           title = paste0('Right genes, nd=', as.character(nd))) + 
     facet_grid(ONTOLOGY~., scales = "free")
-  right_go_bp <- enrichGO(gene = go_right, 
-           OrgDb = org.EcK12.eg.db,
-           keyType = "GO", 
-           ont = "BP",
-           pvalueCutoff = pcut,
-           pAdjustMethod = "BH",
-           qvalueCutoff = qcut,
-           readable = TRUE) %>% goplot() +
-    ggtitle(paste0('Right genes, Biological Process onthology, nd=', as.character(nd)))+
-    theme(plot.title = element_text(hjust = 0.5))
-  right_go_cc <- enrichGO(gene = go_right, 
-                          OrgDb = org.EcK12.eg.db,
-                          keyType = "GO", 
-                          ont = "CC",
-                          pvalueCutoff = pcut,
-                          pAdjustMethod = "BH",
-                          qvalueCutoff = qcut,
-                          readable = TRUE) %>% goplot() +
-    ggtitle(paste0('Right genes, Cellular Component onthology, nd=', as.character(nd)))+
-    theme(plot.title = element_text(hjust = 0.5))
-  right_go_MF <- enrichGO(gene = go_right, 
-                          OrgDb = org.EcK12.eg.db,
-                          keyType = "GO", 
-                          ont = "MF",
-                          pvalueCutoff = pcut,
-                          pAdjustMethod = "BH",
-                          qvalueCutoff = qcut,
-                          readable = TRUE) %>% goplot() +
-    ggtitle(paste0('Right genes, Molecular Function onthology, nd=', as.character(nd)))+
-    theme(plot.title = element_text(hjust = 0.5))
+  right_go_bp <- get_goplot(go_right, 1, 1, nd, pcut_gp=pcut)
+  right_go_mf <- get_goplot(go_right, 2, 1, nd, pcut_gp=pcut)
+  right_go_cc <- get_goplot(go_right, 3, 1, nd, pcut_gp=pcut)
   
   ego_left <- enrichGO(gene = go_left, 
                         OrgDb = org.EcK12.eg.db,
-                        keyType = "GO", 
+                        keyType = "ENTREZID", 
                         ont = "ALL",
                         pvalueCutoff = pcut,
                         pAdjustMethod = "BH",
@@ -85,52 +87,95 @@ get_plots <- function(nd, pcut=1, qcut=1){
                         split = "ONTOLOGY", 
                         title = paste0('Left genes, nd=', as.character(nd))) + 
     facet_grid(ONTOLOGY~., scales = "free")
-  left_go_bp <- enrichGO(gene = go_left, 
-                          OrgDb = org.EcK12.eg.db,
-                          keyType = "GO", 
-                          ont = "BP",
-                          pvalueCutoff = pcut,
-                          pAdjustMethod = "BH",
-                          qvalueCutoff = qcut,
-                          readable = TRUE) %>% goplot() +
-    ggtitle(paste0('Left genes, Biological Process onthology, nd=', as.character(nd)))+
-    theme(plot.title = element_text(hjust = 0.5))
-  left_go_cc <- enrichGO(gene = go_left, 
-                          OrgDb = org.EcK12.eg.db,
-                          keyType = "GO", 
-                          ont = "CC",
-                          pvalueCutoff = pcut,
-                          pAdjustMethod = "BH",
-                          qvalueCutoff = qcut,
-                          readable = TRUE) %>% goplot() +
-    ggtitle(paste0('Left genes, Cellular Component onthology, nd=', as.character(nd)))+
-    theme(plot.title = element_text(hjust = 0.5))
-  left_go_MF <- enrichGO(gene = go_left, 
-                          OrgDb = org.EcK12.eg.db,
-                          keyType = "GO", 
-                          ont = "MF",
-                          pvalueCutoff = pcut,
-                          pAdjustMethod = "BH",
-                          qvalueCutoff = qcut,
-                          readable = TRUE) %>% goplot() +
-    ggtitle(paste0('Left genes, Molecular Function onthology, nd=', as.character(nd)))+
-    theme(plot.title = element_text(hjust = 0.5))
-  return(list(right_dots, right_go_MF, right_go_cc, right_go_bp, left_dots, left_go_MF, left_go_cc, left_go_bp))
+  left_go_bp <- get_goplot(go_left, 1, 2, nd, pcut_gp=pcut)
+  left_go_mf <- get_goplot(go_left, 2, 2, nd, pcut_gp=pcut)
+  left_go_cc <- get_goplot(go_left, 3, 2, nd, pcut_gp=pcut)
+  
+  right_kegg <- neighbors %>% dplyr::filter(side=='right')%>% pull(kegg)%>% na.omit() %>% as.vector()
+  left_kegg <- neighbors %>% dplyr::filter(side=='left')%>% pull(kegg)%>% na.omit() %>% as.vector()
+  ekegg_right <- enrichKEGG(gene = right_kegg,
+                            organism     = 'eco',
+                            pvalueCutoff = 1)
+  ekegg_left <- enrichKEGG(gene = left_kegg,
+                            organism     = 'eco',
+                            pvalueCutoff = 1)
+  if (nrow(ekegg_right@result[ekegg_right@result$p.adjust<=0.05,]) == 0) {
+    dot_kegg_right <- ggplot() + 
+      ggtitle(paste0("No KEGG enrichment found for right genes, nd=", nd))
+  } else {
+    dot_kegg_right <- dotplot(ekegg_right, title = paste0('Right genes, KEGG, nd=', nd))
+  }
+  
+  if (nrow(ekegg_left@result[ekegg_left@result$p.adjust<=0.05,]) == 0) {
+    dot_kegg_left <- ggplot() + 
+      ggtitle(paste0("No KEGG enrichment found for left genes, nd=", nd))
+  } else {
+    dot_kegg_left <- dotplot(ekegg_left, title = paste0('Left genes, KEGG, nd=', nd))
+  }
+  
+  return(list(right_dots, right_go_mf, right_go_cc, right_go_bp, left_dots, left_go_mf, left_go_cc, left_go_bp,dot_kegg_right, dot_kegg_left))
 }
 
-pdf("GO_enrich_plots.pdf", width = 15, height = 12)
-get_plots(nd=1, pcut=0.05)
-get_plots(nd=3, pcut=0.05)
+pdf("GO_enrich_plots_result.pdf", width = 15, height = 12)
+get_plots(nd=1, pcut=0.5)
+get_plots(nd=2, pcut=0.3)
+get_plots(nd=3, pcut=0.3)
+get_plots(nd=5, pcut=0.2)
 dev.off()
 
-get_neighbor <- function(nd){
-  idxes <- which(eczv$gene == 'naRNA4')
-  right_neighbors <- eczv %>% dplyr::slice(outer((1:nd),idxes, '+') %>% as.vector()) %>% dplyr::filter(gene!='naRNA4') %>% mutate(side='right')
-  left_neighbors <- eczv %>% dplyr::slice(outer((-nd:-1),idxes, '+') %>% as.vector()) %>% dplyr::filter(gene!='naRNA4')%>% mutate(side='left')
-  neighbors <- rbind(right_neighbors, left_neighbors) %>% dplyr::arrange(start)
-  return(neighbors)
+
+
+#View
+neighbors <- get_neighbor(nd=3)
+go_right <- neighbors %>% dplyr::filter(side=='right') %>% pull(ENTREZID) %>% na.omit()%>% as.vector()
+go_left <- neighbors %>% dplyr::filter(side=='left') %>% pull(ENTREZID) %>% na.omit() %>% as.vector()
+ego_right <- enrichGO(gene = go_right, 
+                      OrgDb = org.EcK12.eg.db,
+                      keyType = "ENTREZID", 
+                      ont = "ALL",
+                      pvalueCutoff = 1,
+                      pAdjustMethod = "BH",
+                      qvalueCutoff = 1,
+                      readable = TRUE)
+ego_left <- enrichGO(gene = go_left, 
+                      OrgDb = org.EcK12.eg.db,
+                      keyType = "ENTREZID", 
+                      ont = "ALL",
+                      pvalueCutoff = 1,
+                      pAdjustMethod = "BH",
+                      qvalueCutoff = 1,
+                      readable = TRUE)
+
+ego_results <- rbind(ego_right@result %>% mutate(side='right'), ego_left@result %>% mutate(side='left')) %>% 
+  filter(p.adjust<=0.05) %>% arrange(desc(Count))
+
+#top genes
+ego_mf <- ego_results %>% filter(ONTOLOGY=='MF') %>% filter(Count > quantile(Count, probs = seq(0, 1, 0.1))[10])
+ego_bp <- ego_results %>% filter(ONTOLOGY=='BP') %>% filter(Count > quantile(Count, probs = seq(0, 1, 0.1))[10])
+ego_cc <- ego_results %>% filter(ONTOLOGY=='CC') %>% filter(Count > quantile(Count, probs = seq(0, 1, 0.1))[10])
+
+#propionate
+propionate1 <- ego_right@result %>% dplyr::filter(str_detect(Description, "propionate")) %>% filter(p.adjust<=0.05) %>% mutate(side='right')
+propionate2 <- ego_left@result %>% dplyr::filter(str_detect(Description, "propionate")) %>% filter(p.adjust<=0.05) %>% mutate(side='left')
+rbind(propionate1, propionate2) %>% arrange(p.adjust) #%>% write_tsv('propionate.tsv')
+
+#kegg res
+right_kegg <- neighbors %>% dplyr::filter(side=='right')%>% pull(kegg)%>% na.omit() %>% as.vector()
+left_kegg <- neighbors %>% dplyr::filter(side=='left')%>% pull(kegg)%>% na.omit() %>% as.vector()
+ekegg_right <- enrichKEGG(gene = right_kegg,
+                          organism = 'eco',
+                          pvalueCutoff = 1)
+ekegg_left <- enrichKEGG(gene = left_kegg,
+                         organism     = 'eco',
+                         pvalueCutoff = 1)
+kegg_res <- rbind(ekegg_right@result %>% mutate(side='right'), ekegg_left@result %>% mutate(side='left')) %>% 
+  filter(p.adjust<=0.05) %>% arrange(desc(Count))
+
+#web pics
+for (ids  in (kegg_res %>% filter(side=='left') %>% pull(ID))){
+  browseKEGG(ekegg_left, ids)
 }
-neighbor <- get_neighbor(nd=3)
-
-
+for (ids  in (kegg_res %>% filter(side=='right') %>% pull(ID))){
+  browseKEGG(ekegg_right, ids)
+}
 
