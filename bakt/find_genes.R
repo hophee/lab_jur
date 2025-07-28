@@ -5,7 +5,6 @@ library(enrichplot)
 library(org.EcK12.eg.db)
 
 eczv <- read_tsv('bakt_files/ECZV.tsv', skip=2) %>% janitor::clean_names()
-ids <- read_lines('narna_ids.txt')
 
 eczv <- eczv %>% 
   mutate(db_xrefs = strsplit(db_xrefs, ",\\s*")) %>% 
@@ -16,7 +15,7 @@ eczv <- eczv %>%
     names_from = db, 
     values_from = id,
     values_fill = NA,
-    values_fn = ~ paste(unique(.x), collapse = "; ")  # Объединяем дубли через "; "
+    values_fn = ~ paste(unique(.x), collapse = "; ")
   )
 
 #nd - neighbor distance
@@ -119,13 +118,19 @@ get_plots <- function(nd, pcut=1, qcut=1){
   return(list(right_dots, right_go_MF, right_go_cc, right_go_bp, left_dots, left_go_MF, left_go_cc, left_go_bp))
 }
 
-
+pdf("GO_enrich_plots.pdf", width = 15, height = 12)
 get_plots(nd=1, pcut=0.05)
-get_plots(nd=1, pcut=0.05)
+get_plots(nd=3, pcut=0.05)
+dev.off()
 
-
-
-
+get_neighbor <- function(nd){
+  idxes <- which(eczv$gene == 'naRNA4')
+  right_neighbors <- eczv %>% dplyr::slice(outer((1:nd),idxes, '+') %>% as.vector()) %>% dplyr::filter(gene!='naRNA4') %>% mutate(side='right')
+  left_neighbors <- eczv %>% dplyr::slice(outer((-nd:-1),idxes, '+') %>% as.vector()) %>% dplyr::filter(gene!='naRNA4')%>% mutate(side='left')
+  neighbors <- rbind(right_neighbors, left_neighbors) %>% dplyr::arrange(start)
+  return(neighbors)
+}
+neighbor <- get_neighbor(nd=3)
 
 
 
