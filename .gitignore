@@ -6,7 +6,7 @@
 **/*.cns
 **/*.Rproj
 **/*.Rproj.user
-**/*..Rhistory
+**/*.Rhistory
 **/*.tsv
 .Rproj.user
 ./reserv
