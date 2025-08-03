@@ -19,11 +19,23 @@ ids[seq(2, 56, 2)] <- ids_tab$tumor_id
 out_csv <-  out_csv %>% mutate(fastq_1=paste0(c('exome_norm/', 'exome_tumor/'),ids, '_1.fq.gz'), fastq_2=paste0(c('exome_norm/', 'exome_tumor/'),ids, '_2.fq.gz'))
 
 arg_num <- as.numeric(arg)
-iwgr <- arg_num[1]:arg_num[2] #I wanna get rows
-out_csv %>% slice(iwgr) %>% write_csv(arg[1], '_', arg[2], '_samples_exomes.csv')
-printed_fams <- out_csv %>% slice(iwgr) %>% pull(patient) %>% unique()
-cat(c('Записана таблица с фамилиями:\n', paste(printed_fams, collapse = '\n')))
-ids_tab %>% filter(patient %in% printed_fams) %>% pull(norm_id) %>% paste0(., rep(c('_1.fq.gz', '_2.fq.gz'), each=4)) %>% write(paste0('norm_ids_', arg[1],'_', arg[2], '.txt'))
-ids_tab %>% filter(patient %in% printed_fams) %>% pull(tumor_id) %>% paste0(., rep(c('_1.fq.gz', '_2.fq.gz'), each=4)) %>% write(paste0('tumor_ids_', arg[1],'_', arg[2], '.txt'))
-cat(c('Получены id по фамилиям:\n', paste(printed_fams, collapse = '\n')))
-
+iwgr <- arg_num[1]:arg_num[2] # I wanna get rows
+out_csv %>%
+  slice(iwgr) %>%
+  write_csv(paste0(arg[1], "_", arg[2], "_samples_exomes.csv"))
+printed_fams <- out_csv %>%
+  slice(iwgr) %>%
+  pull(patient) %>%
+  unique()
+cat(c("Записана таблица с фамилиями:\n", paste(printed_fams, collapse = "\n"), "\n"))
+ids_tab %>%
+  filter(patient %in% printed_fams) %>%
+  pull(norm_id) %>%
+  paste0(., rep(c("_1.fq.gz", "_2.fq.gz"), each = 4)) %>%
+  write(paste0("norm_ids_", arg[1], "_", arg[2], ".txt"))
+ids_tab %>%
+  filter(patient %in% printed_fams) %>%
+  pull(tumor_id) %>%
+  paste0(., rep(c("_1.fq.gz", "_2.fq.gz"), each = 4)) %>%
+  write(paste0("tumor_ids_", arg[1], "_", arg[2], ".txt"))
+cat(c("Получены id по фамилиям:\n", paste(printed_fams, collapse = "\n"), "\n"))
