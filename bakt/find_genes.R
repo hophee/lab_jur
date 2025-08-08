@@ -179,3 +179,9 @@ for (ids  in (kegg_res %>% filter(side=='right') %>% pull(ID))){
   browseKEGG(ekegg_right, ids)
 }
 
+#strsplit
+neighbors %>% pull(product) %>% strsplit(., ' ') %>% unlist() %>% strsplit(., '-') %>% unlist() %>% table() %>% sort()
+
+words <- neighbors %>% pull(product) %>% strsplit(., ' ') %>% unlist() %>% strsplit(., '-') %>% 
+  unlist() %>% table() %>% sort(decreasing = T) %>% as.data.frame() %>% filter(Freq>1) %>% 
+  rename('.' = 'wors') %>% mutate(str_len=str_length(wors)) %>% filter(str_len>=3)
