@@ -16,3 +16,8 @@ bakt/folding
 **/*.fas
 **/*.fasta
 **/*.fs
+**/*.aln
+**/*.zip
+**/*.mat
+**/*.Rds
+**/*.dnd

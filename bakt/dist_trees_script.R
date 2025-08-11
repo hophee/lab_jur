@@ -1,24 +1,25 @@
 library(tidyverse)
-library(reshape2)
-library(ComplexHeatmap)
 library(dendextend)
 
-all_names <- readRDS('all_narna.Rds')
-text <- readLines("all_naRNA_uniq_dist.mat")
+# [1] - file_path, [2] - heatmap title
+arg <- commandArgs(trailingOnly = TRUE)
+all_names <- readRDS("all_narna.Rds")
+text <- readLines(arg[1])
 text <- text[-c(grep("^>", text) %>% max(), length(text))]
 
-names <- sub("^>", "", grep("^>", text, value = TRUE)) #seq names
-#names <- data.frame('seq_name'= names) %>% left_join(all_names, by='seq_name') %>% dplyr::pull(new_name)
-names <- sub('\\sNucleoid-associated noncoding RNA 4 \\(CssrE\\)$', '', names)
+names <- sub("^>", "", grep("^>", text, value = TRUE)) # seq names
+names <- data.frame("seq_name" = names) %>%
+  left_join(all_names, by = "seq_name") %>%
+  dplyr::pull(new_name)
 
-data_lines <- text[!grepl("^>", text) & text != ""] #dist values
+data_lines <- text[!grepl("^>", text) & text != ""] # dist values
 split_lines <- lapply(data_lines, function(line) as.numeric(strsplit(trimws(line), "\\s+")[[1]]))
 dist_values <- unlist(split_lines)
 n <- length(split_lines) + 1
 
 dist_matrix <- matrix(0, nrow = n, ncol = n, byrow = TRUE)
 idx <- which(lower.tri(dist_matrix), arr.ind = TRUE)
-idx_ordered <- idx[order(idx[,1], idx[,2]), ]
+idx_ordered <- idx[order(idx[, 1], idx[, 2]), ]
 
 for (i in seq_len(nrow(idx_ordered))) {
   dist_matrix[idx_ordered[i, "row"], idx_ordered[i, "col"]] <- dist_values[i]
@@ -27,12 +28,6 @@ for (i in seq_len(nrow(idx_ordered))) {
 dist_matrix <- dist_matrix + t(dist_matrix)
 rownames(dist_matrix) <- colnames(dist_matrix) <- names
 
-
-#heatmap
-Heatmap(dist_matrix, row_names_gp = gpar(fontsize = 5),column_names_gp = gpar(fontsize = 5), heatmap_legend_param = list(title = 'base pairs \n distance'))
-heatmap(dist_matrix, symm = TRUE, main = "Distance Matrix Heatmap", cexRow = 0.5, cexCol = 0.5)
-
-#Дерево
 get_color <- function(name, col1='red', col2='blue') {
   if (grepl("-\\d{5}$", name)) {
     return(col1)
@@ -47,4 +42,8 @@ hc <- hclust(as.dist(dist_matrix))
 hc$height <- hc$height / max(hc$height)
 dend <- as.dendrogram(hc)
 labels_colors(dend) <- sapply(labels(dend), get_color)
-plot(dend, main = "Hierarchical Clustering with Colored Labels")
+
+pdf(paste0("hc_and_heatmap/", arg[2], "_heatmap_and_hc.pdf"), width = 12, height = 8)
+heatmap(dist_matrix, symm = TRUE, main = paste0("Distance Matrix Heatmap for ", arg[2]), cexRow = 0.5, cexCol = 0.5)
+plot(dend, main = paste0("Hierarchical Clustering for ", arg[2]))
+dev.off()

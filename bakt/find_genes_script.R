@@ -4,18 +4,17 @@ library(DOSE)
 library(enrichplot)
 library(org.EcK12.eg.db)
 
-eczv <- read_tsv('bakt_files/ECZV.tsv', skip=2) %>% janitor::clean_names()
+# [1]-*.tsv path, [2] - *.pdf output 
+arg <- commandArgs(trailingOnly = TRUE)
+eczv <- read_tsv(arg[1], skip=2) %>% janitor::clean_names()
 
-eczv <- eczv %>% 
-  mutate(db_xrefs = strsplit(db_xrefs, ",\\s*")) %>% 
-  unnest(db_xrefs) %>%
-  separate(db_xrefs, into = c("db", "id"), sep = ":", extra = "merge") %>% 
-  distinct(number_sequence_id, type, start, stop, strand, locus_tag, gene, product, db, .keep_all = TRUE) %>% 
-  pivot_wider(
-    names_from = db, 
-    values_from = id,
-    values_fill = NA,
-    values_fn = ~ paste(unique(.x), collapse = "; "))
+if ('gene' %in% colnames(eczv)){
+  print('Gene col is here!')
+} else {
+  stop("No Gene col - no plots ¯\_(ツ)_/¯")
+}
+
+  
 entr <- bitr(
   eczv$gene,
   fromType = "SYMBOL",
@@ -117,71 +116,7 @@ get_plots <- function(nd, pcut=1, qcut=1){
 }
 
 #merged pdf of nds-s
-pdf("GO_enrich_plots_result.pdf", width = 15, height = 12)
+pdf(arg[2], width = 15, height = 12)
 get_plots(nd=1, pcut=0.5)
-get_plots(nd=2, pcut=0.3)
 get_plots(nd=3, pcut=0.3)
-get_plots(nd=5, pcut=0.2)
 dev.off()
-
-
-
-#View
-neighbors <- get_neighbor(nd=3)
-go_right <- neighbors %>% dplyr::filter(side=='right') %>% pull(ENTREZID) %>% na.omit()%>% as.vector()
-go_left <- neighbors %>% dplyr::filter(side=='left') %>% pull(ENTREZID) %>% na.omit() %>% as.vector()
-ego_right <- enrichGO(gene = go_right, 
-                      OrgDb = org.EcK12.eg.db,
-                      keyType = "ENTREZID", 
-                      ont = "ALL",
-                      pvalueCutoff = 1,
-                      pAdjustMethod = "BH",
-                      qvalueCutoff = 1,
-                      readable = TRUE)
-ego_left <- enrichGO(gene = go_left, 
-                      OrgDb = org.EcK12.eg.db,
-                      keyType = "ENTREZID", 
-                      ont = "ALL",
-                      pvalueCutoff = 1,
-                      pAdjustMethod = "BH",
-                      qvalueCutoff = 1,
-                      readable = TRUE)
-
-ego_results <- rbind(ego_right@result %>% mutate(side='right'), ego_left@result %>% mutate(side='left')) %>% 
-  filter(p.adjust<=0.05) %>% arrange(desc(Count))
-
-#top genes
-ego_mf <- ego_results %>% filter(ONTOLOGY=='MF') %>% filter(Count > quantile(Count, probs = seq(0, 1, 0.1))[10])
-ego_bp <- ego_results %>% filter(ONTOLOGY=='BP') %>% filter(Count > quantile(Count, probs = seq(0, 1, 0.1))[10])
-ego_cc <- ego_results %>% filter(ONTOLOGY=='CC') %>% filter(Count > quantile(Count, probs = seq(0, 1, 0.1))[10])
-
-#propionate
-propionate1 <- ego_right@result %>% dplyr::filter(str_detect(Description, "propionate")) %>% filter(p.adjust<=0.05) %>% mutate(side='right')
-propionate2 <- ego_left@result %>% dplyr::filter(str_detect(Description, "propionate")) %>% filter(p.adjust<=0.05) %>% mutate(side='left')
-rbind(propionate1, propionate2) %>% arrange(p.adjust) #%>% write_tsv('propionate.tsv')
-
-#kegg res
-right_kegg <- neighbors %>% dplyr::filter(side=='right')%>% pull(kegg)%>% na.omit() %>% as.vector()
-left_kegg <- neighbors %>% dplyr::filter(side=='left')%>% pull(kegg)%>% na.omit() %>% as.vector()
-ekegg_right <- enrichKEGG(gene = right_kegg,
-                          organism = 'eco',
-                          pvalueCutoff = 1)
-ekegg_left <- enrichKEGG(gene = left_kegg,
-                         organism     = 'eco',
-                         pvalueCutoff = 1)
-kegg_res <- rbind(ekegg_right@result %>% mutate(side='right'), ekegg_left@result %>% mutate(side='left')) %>% 
-  filter(p.adjust<=0.05) %>% arrange(desc(Count))
-
-#web pics
-for (ids  in (kegg_res %>% filter(side=='left') %>% pull(ID))){
-  browseKEGG(ekegg_left, ids)
-}
-for (ids  in (kegg_res %>% filter(side=='right') %>% pull(ID))){
-  browseKEGG(ekegg_right, ids)
-}
-
-#strsplit/word count, don't use for sure
-neighbors %>% pull(product) %>% strsplit(., ' ') %>% unlist() %>% strsplit(., '-') %>% unlist() %>% table() %>% sort()
-words <- neighbors %>% pull(product) %>% strsplit(., ' ') %>% unlist() %>% strsplit(., '-') %>% 
-  unlist() %>% table() %>% sort(decreasing = T) %>% as.data.frame() %>% filter(Freq>1) %>% 
-  dplyr::rename('.' = 'wors') %>% mutate(str_len=str_length(wors)) %>% filter(str_len>=3)
