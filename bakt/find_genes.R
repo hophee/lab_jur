@@ -34,6 +34,16 @@ get_neighbor <- function(nd){
 }
 
 get_goplot <- function(genelist, ont_type, side_num, nd, pcut_gp=0.05, qcut_gp=1, sc=15){
+  genelist %>% 
+    as.character() %>% 
+    .[!is.na(.)] %>%           
+    .[. != ""] %>%             
+    .[. != "NA"]
+    if (length(genelist) == 0) {
+    return(ggplot() + 
+             ggtitle(paste0(side[side_num], " genes, ", onts[ont_type], " ontology, nd=", nd, " (No genes)")) +
+             theme_void())
+  } 
   types_int <- c('BP', 'MF', 'CC')
   onts <- c('Biological Process', 'Molecular Function', 'Cellular Component')
   side <- c('Right', 'Left')
@@ -53,8 +63,8 @@ get_goplot <- function(genelist, ont_type, side_num, nd, pcut_gp=0.05, qcut_gp=1
 #nd - neighbor distance
 get_plots <- function(nd, pcut=1, qcut=1){
   neighbors <- get_neighbor(nd)
-  go_right <- neighbors %>% dplyr::filter(side=='right') %>% pull(ENTREZID) %>% na.omit() %>% as.vector()
-  go_left <- neighbors %>% dplyr::filter(side=='left') %>% pull(ENTREZID) %>% na.omit()%>% as.vector()
+  go_right <- neighbors %>% dplyr::filter(side=='right') %>% pull(ENTREZID) %>% na.omit() %>% as.character()
+  go_left <- neighbors %>% dplyr::filter(side=='left') %>% pull(ENTREZID) %>% na.omit()%>% as.character()
   ego_right <- enrichGO(gene = go_right, 
                         OrgDb = org.EcK12.eg.db,
                         keyType = "ENTREZID", 
@@ -91,8 +101,8 @@ get_plots <- function(nd, pcut=1, qcut=1){
   left_go_mf <- get_goplot(go_left, 2, 2, nd, pcut_gp=pcut)
   left_go_cc <- get_goplot(go_left, 3, 2, nd, pcut_gp=pcut)
   
-  right_kegg <- neighbors %>% dplyr::filter(side=='right')%>% pull(kegg)%>% na.omit() %>% as.vector()
-  left_kegg <- neighbors %>% dplyr::filter(side=='left')%>% pull(kegg)%>% na.omit() %>% as.vector()
+  right_kegg <- neighbors %>% dplyr::filter(side=='right')%>% pull(kegg)%>% na.omit() %>% as.character()
+  left_kegg <- neighbors %>% dplyr::filter(side=='left')%>% pull(kegg)%>% na.omit() %>% as.character()
   ekegg_right <- enrichKEGG(gene = right_kegg,
                             organism     = 'eco',
                             pvalueCutoff = 1)
@@ -127,9 +137,9 @@ dev.off()
 
 
 #View
-neighbors <- get_neighbor(nd=3)
-go_right <- neighbors %>% dplyr::filter(side=='right') %>% pull(ENTREZID) %>% na.omit()%>% as.vector()
-go_left <- neighbors %>% dplyr::filter(side=='left') %>% pull(ENTREZID) %>% na.omit() %>% as.vector()
+neighbors <- get_neighbor(nd=1)
+go_right <- neighbors %>% dplyr::filter(side=='right') %>% pull(ENTREZID) %>% na.omit()%>% as.character()
+go_left <- neighbors %>% dplyr::filter(side=='left') %>% pull(ENTREZID) %>% na.omit() %>% as.character()
 ego_right <- enrichGO(gene = go_right, 
                       OrgDb = org.EcK12.eg.db,
                       keyType = "ENTREZID", 
@@ -161,8 +171,8 @@ propionate2 <- ego_left@result %>% dplyr::filter(str_detect(Description, "propio
 rbind(propionate1, propionate2) %>% arrange(p.adjust) #%>% write_tsv('propionate.tsv')
 
 #kegg res
-right_kegg <- neighbors %>% dplyr::filter(side=='right')%>% pull(kegg)%>% na.omit() %>% as.vector()
-left_kegg <- neighbors %>% dplyr::filter(side=='left')%>% pull(kegg)%>% na.omit() %>% as.vector()
+right_kegg <- neighbors %>% dplyr::filter(side=='right')%>% pull(kegg)%>% na.omit() %>% as.character()
+left_kegg <- neighbors %>% dplyr::filter(side=='left')%>% pull(kegg)%>% na.omit() %>% as.character()
 ekegg_right <- enrichKEGG(gene = right_kegg,
                           organism = 'eco',
                           pvalueCutoff = 1)

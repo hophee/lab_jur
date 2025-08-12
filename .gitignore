@@ -13,6 +13,7 @@
 reserv/*
 bakt/bakt_files
 bakt/folding
+bakt/bakta_isolates
 **/*.fas
 **/*.fasta
 **/*.fs
