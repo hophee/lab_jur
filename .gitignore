@@ -22,3 +22,4 @@ bakt/bakta_isolates
 **/*.mat
 **/*.Rds
 **/*.dnd
+**/*.xlsx
