@@ -108,12 +108,15 @@ sig_minus <- full_tab %>% filter((strand.x=='-') & (significant=='yes')) %>%
   mutate(cl_sz=mapply(function(x1, x2){min_dist2(x1, x2, narna_minus$stop.x, narna_minus$start.x, narna_minus, cl_sz_minus_strand)[2]}, start.x, stop.x))
 
 
-rbind(sig_plus, sig_minus) %>% mutate(log2fold_change=as.numeric(log2fold_change)) %>% 
-  ggplot()+
-  geom_point(aes(y=log2fold_change, x=log10(abs(rna_dist)), col=cl_sz))+
+plot_data <- rbind(sig_plus, sig_minus) %>% mutate(log2fold_change=as.numeric(log2fold_change))
+ggplot()+
+  geom_point(data=plot_data, aes(y=log2fold_change, x=log10(abs(rna_dist)), col=cl_sz))+
   scale_color_gradient(low='blue', high='red')+
   labs(title = 'Отношение расстояния от ближайшего naRNA4 к log2(FC)', color='Размер \nближайшего \nкластера', 
        x='log10(|Расстояние до naRNA4|)', y='log2(FC)')+
   theme_minimal()+
-  theme(plot.title = element_text(hjust=0.5))
+  theme(plot.title = element_text(hjust=0.5))+
+  ggrepel::geom_label_repel(data=(plot_data %>% filter(log10(abs(rna_dist))<3.3)), 
+             aes(label=gene.x, y=log2fold_change+1.5, x=log10(abs(rna_dist)), alpha=0.05))+
+  guides(alpha=F)
 
