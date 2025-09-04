@@ -32,7 +32,7 @@ print(chi2_test$p.value)
 print(chi2_test$observed)
 
 #---------
-all_neighb <- left_join(eczv, canon_tab, by='locus_tag') %>% neighbor_of_canon(1, tab=., old=T) %>% dplyr::select(start, type, canon_neighb, gene, locus_tag)
+all_neighb <- left_join(eczv, canon_tab, by='locus_tag') %>% neighbor_of_canon(1, tab=., old=F) %>% dplyr::select(start, type, canon_neighb, gene, locus_tag)
 all_neighb_entr <- all_neighb %>%
   left_join(
     bitr(all_neighb$gene, 
@@ -63,25 +63,24 @@ all_go_terms <- compareCluster(
   keyType = "ENTREZID",
   ont = 'ALL',
   pvalueCutoff = 0.05,
-  pAdjustMethod = "BH"
-) 
+  pAdjustMethod = "BH")
 dotplot(all_go_terms, showCategory = 15, font.size = 10) +
   ggtitle("GO Terms: Canonical vs Non-canonical neighbors")
 
-#Splited same
-clusters <- sapply(c('BP', 'MF'), function(x){compareCluster(
-  geneCluster = gene_clusters,
-  fun = "enrichGO",
-  OrgDb = org.EcK12.eg.db,
-  keyType = "ENTREZID",
-  ont = x,
-  pvalueCutoff = 0.05,
-  pAdjustMethod = "BH"
-)})
-dotplot(clusters[[1]], showCategory = 15, font.size = 10) +
-  ggtitle("GO BP: Canonical vs Non-canonical neighbors")
-dotplot(clusters[[2]], showCategory = 15, font.size = 10) +
-  ggtitle("GO MF: Canonical vs Non-canonical neighbors")
+##Splited same
+# clusters <- sapply(c('BP', 'MF'), function(x){compareCluster(
+#   geneCluster = gene_clusters,
+#   fun = "enrichGO",
+#   OrgDb = org.EcK12.eg.db,
+#   keyType = "ENTREZID",
+#   ont = x,
+#   pvalueCutoff = 0.05,
+#   pAdjustMethod = "BH"
+# )})
+# dotplot(clusters[[1]], showCategory = 15, font.size = 10) +
+#   ggtitle("GO BP: Canonical vs Non-canonical neighbors")
+# dotplot(clusters[[2]], showCategory = 15, font.size = 10) +
+#   ggtitle("GO MF: Canonical vs Non-canonical neighbors")
 
 
 #KEGG обогащение
