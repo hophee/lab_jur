@@ -120,3 +120,17 @@ ggplot()+
              aes(label=gene.x, y=log2fold_change+1.5, x=log10(abs(rna_dist)), alpha=0.05))+
   guides(alpha=F)
 
+mod <- plot_data %>% filter(log10(abs(rna_dist))<3.3) %>% filter(log2fold_change>2)
+ggplot()+
+  geom_point(data=mod, aes(x=log2fold_change, y=log10(abs(rna_dist)), col=cl_sz))+
+  scale_color_gradient(low='blue', high='red')+
+  labs(title = 'Отношение расстояния от ближайшего naRNA4 к log2(FC)', color='Размер \nближайшего \nкластера', 
+       y='log10(|Расстояние до naRNA4|)', x='log2(FC)')+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust=0.5))+
+  ggrepel::geom_label_repel(data=mod, 
+                            aes(label=gene.x, x=log2fold_change, y=log10(abs(rna_dist)), alpha=0.05))+
+  guides(alpha=F)+
+  xlim(c(0, 15))+
+  ylim(c(0, 3.5))+
+  geom_vline(xintercept =2, color='red', linetype=2)

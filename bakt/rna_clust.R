@@ -13,7 +13,7 @@ calculate_cluster_size <- function(strand_df) {
   strand_df %>%
     group_by(number_sequence_id) %>%
     arrange(
-      if (first(strand_df$strand.x) == "+") start.x else -start.x
+      if (dplyr::first(strand_df$strand.x) == "+") start.x else -start.x
     ) %>%
     mutate(
       cluster_size = {
