@@ -130,14 +130,25 @@ contained_tsv <- list.files(file.path('bakta_isolates', contain_dir), full.names
 gen_tables <- lapply(contained_tsv, read_anat_tab)
 
 tab_res_nd1 <- lapply(gen_tables, function(x){tab_analysis(x, n=1, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
-sapply(tab_res_nd1, function(x){get_go_plots(1, 'test', x)})
-sapply(tab_res_nd1, function(x){x})
+names(tab_res_nd1) <- basename(contained_tsv)
+
 sapply(tab_res_nd1, length)
+sapply(seq_along(tab_res_nd1), function(i){names(tab_res_nd1[[i]])})
 
 tested <- tab_res_nd1[[2]]
 tested[[1]]@ontology 
 
-list_to_plot <- function(x, nd=1){
+ontology_to_plot <- function(ont){
+  ont_name <- ont@ontology
+  dotplot(ont)+
+    ggtitle(paste0(side[side_num], ' genes, ' ,' onthology, nd=', as.character(nd)))+
+    theme(plot.title = element_text(hjust = 0.5))
+}
+list_to_plot <- function(x, title){
+  tit_name <- name
+  which(sapply(x, function(x){x@result %>%  nrow()})!=0)
+  which(sapply(x@results, nrow)!=0)
+  x@results %>% nrow()
   en_type <- x@ontology
   en_plot <- dotplot(x)+
     ggtitle(paste0(side[side_num], ' genes, ' ,' onthology, nd=', as.character(nd)))+
