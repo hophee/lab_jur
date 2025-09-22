@@ -4,6 +4,7 @@ library(DOSE)
 library(enrichplot)
 library(org.EcK12.eg.db)
 
+#Задача функций----------------------
 read_anat_tab <- function(path){
   lines <- readLines(path)
   hash_lines <- grep("^#", lines)
@@ -37,6 +38,50 @@ get_neighbor <- function(nd, x, tag='naRNA4'){
   return(neighbors)
 }
 
+alt_neighb <- function(nd, x, tag='naRNA4') {
+  tab <- x %>% mutate(rnum=row_number()) %>% filter(!is.na(gene))
+  if (any(tag == 'naRNA4')) {
+    idxes <- which(tab$gene == 'naRNA4')
+  } else{
+    idxes <- which(tab$locus_tag %in% tag)
+  }
+  left_neighb <- list()
+  right_neighb <- list()
+  for (id in idxes){
+    left <- integer()
+    right <- integer()
+    li <- 1
+    ri <- 1
+    while (length(left)!=nd){
+      #if (id-li > nrow(x)) {
+      #  break
+      #}
+      if (tab$gene[id-li]!='naRNA4'){
+        left <- base::append(left, id-li)
+        li <- li+1
+      } else{
+        li <- li+1
+      }
+    }
+    while (length(right)!=nd){
+      #if (id+ri > nrow(x)) {
+      #  break  # или stop("Недостаточно строк справа")
+      #}
+      if (tab$gene[id+ri]!='naRNA4'){
+        right <- base::append(right, id+ri)
+        ri <- ri+1
+      } else{
+        ri <- ri+1
+      }
+    }
+    left_neighb <- base::append(left_neighb, list(left))
+    right_neighb <- base::append(right_neighb, list(right))
+  }
+  tab_right <- tab %>% dplyr::slice(unique(unlist(right_neighb))) %>% mutate(side='right')
+  tab_left <- tab %>% dplyr::slice(unique(unlist(left_neighb)))%>% mutate(side='left')
+  return(bind_rows(tab_right, tab_left))
+}
+
 get_enrichment <- function(gene_set, db_type='GO', pcut=0.05, qcut=0.05){
   db_types <- c('GO', 'KEGG')
   if (!(db_type %in% db_types)){
@@ -60,9 +105,15 @@ get_enrichment <- function(gene_set, db_type='GO', pcut=0.05, qcut=0.05){
   return(enrich)
 }
 
-tab_analysis <- function(x, n, loc_tag='naRNA4', pcut=0.05, qcut=0.05){
-  if (any(loc_tag=='naRNA4')) {
-    neig <- get_neighbor(n, x)
+enrich_to_db_side_tab <- function(x, side_str, ontology_str){
+  if (is.null(x) || !isS4(x) || is.null(slot(x, "result"))) {
+    return(NULL)
+  } else{x@result %>% mutate(side=side_str, ontology=ontology_str) %>% return()}
+}
+
+tab_analysis <- function(x, n, loc_tag='naRNA4', pcut=0.05, qcut=0.05, alt_tab=T){
+  if (alt_tab) {
+    neig <- alt_neighb(n, x, tag=loc_tag)
   } else{
     neig <- get_neighbor(n, x, tag=loc_tag)
   }
@@ -72,16 +123,99 @@ tab_analysis <- function(x, n, loc_tag='naRNA4', pcut=0.05, qcut=0.05){
   left_kegg <- neig %>% dplyr::filter(side=='left')%>% pull(kegg)%>% na.omit() %>% as.character()
   
   print(head(go_right))
-  ego_right <- get_enrichment(go_right, db_type='GO', pcut=0.05, qcut=0.05)
+  ego_right <- get_enrichment(go_right, db_type='GO', pcut=0.05, qcut=0.05) %>% enrich_to_db_side_tab(side_str = 'right', ontology_str = 'GO')
   print(head(go_left))
-  ego_left <- get_enrichment(go_left, db_type='GO', pcut=0.05, qcut=0.05)
+  ego_left <- get_enrichment(go_left, db_type='GO', pcut=0.05, qcut=0.05) %>% enrich_to_db_side_tab(side_str = 'left', ontology_str = 'GO')
   print(head(right_kegg))
-  ekegg_right <- get_enrichment(right_kegg, db_type='KEGG', pcut=0.05, qcut=0.05)
+  ekegg_right <- get_enrichment(right_kegg, db_type='KEGG', pcut=0.05, qcut=0.05) %>% enrich_to_db_side_tab(side_str = 'right', ontology_str = 'KEGG')
   print(head(left_kegg))
-  ekegg_left <- get_enrichment(left_kegg, db_type='KEGG', pcut=0.05, qcut=0.05)
-  return(c(ego_right, ego_left, ekegg_right, ekegg_left))
+  ekegg_left <- get_enrichment(left_kegg, db_type='KEGG', pcut=0.05, qcut=0.05) %>% enrich_to_db_side_tab(side_str = 'left', ontology_str = 'KEGG')
+
+  en_res_list <- list(ego_right, ego_left, ekegg_right, ekegg_left) %>% 
+    keep(~ !is.null(.x)) %>% keep(~ is.data.frame(.x) && (nrow(.x) > 0))
+  
+  if (length(en_res_list) == 0) {
+    message("--> All enrichment results are empty or NULL. Returning empty data.frame.")
+    return(data.frame())
+  }
+  
+  en_res <- bind_rows(en_res_list)
+  return(en_res)
 }
 
+#Предобработка-----------------
+
+isols <- read_tsv("AIEC_isol.tsv") #Статусы патогенности изолятов
+tablo <- readRDS("all_narna.Rds") #Обобщённая аннотация
+imp <- c('ECZV_18330','ECZV_18305','ECZV_18395','ECZV_20640','ECZV_19270') # 5 самых значимых генов
+targets <- tablo %>% filter(seq_name %in% paste(imp, 'Nucleoid-associated noncoding RNA 4 (CssrE)')) %>% pull(new_name) #получение обобщённых названий генов среди всех изолятов
+
+target_seqs <- tablo %>% filter(new_name %in% targets) %>% pull(seq_name) %>% gsub(' Nucleoid-associated noncoding RNA 4 \\(CssrE\\)', '', .) #Извлечение id генов внутри изолятов
+bakts <- tablo %>% filter(new_name %in% targets) %>% pull(seq_name) %>% gsub(' Nucleoid-associated noncoding RNA 4 \\(CssrE\\)', '', .) %>% gsub('_\\d+$', '', .) %>%  unique() #Получение списка изолятова
+#tablo %>% filter(new_name %in% targets) %>% pull(seq_name) %>%  gsub(' Nucleoid-associated noncoding RNA 4 \\(CssrE\\)', '', .) %>% gsub('_\\d+$', '', .) %>% table()
+
+contain_dir <- dir('bakta_isolates')[dir('bakta_isolates') %in% paste0('bakta_annotation_',bakts)]
+contained_tsv <- list.files(file.path('bakta_isolates', contain_dir), full.names = TRUE) %>% grep('\\d+\\.tsv$', ., value = T)
+gen_tables <- lapply(contained_tsv, read_anat_tab)
+
+
+#Обработка-----------
+
+fultab_res_nd1 <- lapply(gen_tables, function(x){tab_analysis(x, n=1, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
+names(fultab_res_nd1) <- basename(contained_tsv) %>% sub('.tsv', '', ., fixed = T)
+sapply(fultab_res_nd1, function(x){if (nrow(x) > 1) {
+  return(x %>% pull(Count))
+} else {
+  return(NA)}
+}) %>% unlist() %>% hist()
+sapply(fultab_res_nd1, function(x){if (nrow(x) > 1) {
+  return(x %>% pull(geneID) %>% strsplit('/') %>% unlist())
+} else {
+  return(NA)}
+}) %>% unlist() %>% table() %>% sort()
+
+fultab_res_nd3 <- lapply(gen_tables, function(x){tab_analysis(x, n=3, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
+names(fultab_res_nd3) <- basename(contained_tsv) %>% sub('.tsv', '', ., fixed = T)
+sapply(fultab_res_nd3, function(x){if (nrow(x) > 1) {
+  return(x %>% pull(Count))
+} else {
+  return(NA)}
+}) %>% unlist() %>% hist()
+sapply(fultab_res_nd3, function(x){if (nrow(x) > 1) {
+  return(x %>% pull(geneID) %>% strsplit('/') %>% unlist())
+} else {
+  return(NA)}
+}) %>% unlist() %>% table() %>% sort()
+sapply(fultab_res_nd3, function(x){
+  x %>% filter(Count>2 & p.adjust<=0.05)
+}) %>% bind_rows() %>% pull(Description) %>% table()
+
+plus_tabs_nd3 <- lapply(gen_tables, function(x){tab_analysis((x %>% filter(strand=='+')), n=3, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
+names(plus_tabs_nd3) <- basename(contained_tsv) %>% sub('.tsv', '', ., fixed = T)
+sapply(plus_tabs_nd3, function(x){
+  if(nrow(x)>0){x  %>% filter(Count>1 & p.adjust<=0.01)}}) %>% 
+  bind_rows() %>% pull(Description) %>% table()%>% sort(decreasing = T)
+sapply(plus_tabs_nd3, function(x){
+  if(nrow(x)>0){x  %>% filter(Count>1 & p.adjust<=0.01)}}) %>% 
+  bind_rows() %>% pull(side) %>% table()
+
+minus_tabs_nd3 <- lapply(gen_tables, function(x){tab_analysis((x %>% filter(strand=='-')), n=3, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
+names(minus_tabs_nd3) <- basename(contained_tsv) %>% sub('.tsv', '', ., fixed = T)
+sapply(minus_tabs_nd3, function(x){
+  if(nrow(x)>0){x  %>% filter(Count>1 & p.adjust<=0.01)}}) %>% 
+  bind_rows() %>% pull(Description) %>% table() %>% sort(decreasing = T)
+sapply(minus_tabs_nd3, function(x){
+  if(nrow(x)>0){x  %>% filter(Count>1 & p.adjust<=0.01)}}) %>% 
+  bind_rows() %>% pull(side) %>% table()
+
+#sapply(plus_tabs_nd3, nrow) %>% as.data.frame() %>% rownames_to_column(var='File') %>% rename('.'= 'n_row') %>% left_join(isols, by='File') %>% dplyr::select(1, 2, 5) %>% dplyr::slice(-1) 
+#Имеет смысл сделать это раньше
+
+minus_tabs_nd3 <- lapply(gen_tables, function(x){tab_analysis((x %>% filter(strand=='-')), n=1, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
+names(minus_tabs_nd1) <- basename(contained_tsv) %>% sub('.tsv', '', ., fixed = T)
+
+
+#garb------
 get_go_plots <- function(row_n, title_char, list_of_res){
   tablet <- list_of_res[row_n] %>% 
     map(~ .x@result) %>%
@@ -115,46 +249,4 @@ get_kegg_plots <- function(row_n, title_char, list_of_res){
     labs(title=title_char)+
     xlab('Gene ratio')
   return(plot)
-}
-
-tablo <- readRDS("all_narna.Rds")
-imp <- c('ECZV_18330','ECZV_18305','ECZV_18395','ECZV_20640','ECZV_19270')
-targets <- tablo %>% filter(seq_name %in% paste(imp, 'Nucleoid-associated noncoding RNA 4 (CssrE)')) %>% pull(new_name)
-
-target_seqs <- tablo %>% filter(new_name %in% targets) %>% pull(seq_name) %>% gsub(' Nucleoid-associated noncoding RNA 4 \\(CssrE\\)', '', .)
-bakts <- tablo %>% filter(new_name %in% targets) %>% pull(seq_name) %>% gsub(' Nucleoid-associated noncoding RNA 4 \\(CssrE\\)', '', .) %>% gsub('_\\d+$', '', .) %>%  unique()
-#tablo %>% filter(new_name %in% targets) %>% pull(seq_name) %>%  gsub(' Nucleoid-associated noncoding RNA 4 \\(CssrE\\)', '', .) %>% gsub('_\\d+$', '', .) %>% table()
-
-contain_dir <- dir('bakta_isolates')[dir('bakta_isolates') %in% paste0('bakta_annotation_',bakts)]
-contained_tsv <- list.files(file.path('bakta_isolates', contain_dir), full.names = TRUE) %>% grep('\\d+\\.tsv$', ., value = T)
-gen_tables <- lapply(contained_tsv, read_anat_tab)
-
-tab_res_nd1 <- lapply(gen_tables, function(x){tab_analysis(x, n=1, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
-names(tab_res_nd1) <- basename(contained_tsv)
-
-sapply(tab_res_nd1, length)
-sapply(seq_along(tab_res_nd1), function(i){names(tab_res_nd1[[i]])})
-
-tested <- tab_res_nd1[[2]]
-tested[[1]]@ontology 
-
-ontology_to_plot <- function(ont){
-  ont_name <- ont@ontology
-  dotplot(ont)+
-    ggtitle(paste0(side[side_num], ' genes, ' ,' onthology, nd=', as.character(nd)))+
-    theme(plot.title = element_text(hjust = 0.5))
-}
-list_to_plot <- function(x, title){
-  tit_name <- name
-  which(sapply(x, function(x){x@result %>%  nrow()})!=0)
-  which(sapply(x@results, nrow)!=0)
-  x@results %>% nrow()
-  en_type <- x@ontology
-  en_plot <- dotplot(x)+
-    ggtitle(paste0(side[side_num], ' genes, ' ,' onthology, nd=', as.character(nd)))+
-    theme(plot.title = element_text(hjust = 0.5))
-}
-
-for (i in 1:length(tested)){
-  print(dotplot(tested[[i]]))
 }
