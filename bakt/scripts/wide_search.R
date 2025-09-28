@@ -143,6 +143,46 @@ tab_analysis <- function(x, n, loc_tag='naRNA4', pcut=0.05, qcut=0.05, alt_tab=T
   return(en_res)
 }
 
+make_plot_from_merged_tab <- function(row_n, title_char, list_of_res){
+  tablet <- list_of_res[row_n,] %>% 
+    map(~ .x@result) %>%           # извлекаем @result из каждого элемента
+    imap(~ mutate(.x, file_name = .y)) %>%  # добавляем имя файла
+    bind_rows() %>% filter(ONTOLOGY == 'BP')%>% mutate(file_name =   sub('.*/', '', file_name)) %>% 
+    mutate(ratio = as.numeric(sub("/.*", "", GeneRatio)) / as.numeric(sub(".*/", "", GeneRatio)))
+  plot <- ggplot()+
+    geom_point(data=tablet, aes(x=ratio, y=Description, color=p.adjust, size=Count))+
+    #geom_text(data=tablet, aes(x=ratio, y=Description, label=file_name), 
+    #size=2, hjust=0, vjust=0.1, nudge_x=0.02)+
+    scale_color_gradientn(colors = c("darkblue", "red"))+
+    scale_size_continuous(range = c(5, 8))+
+    labs(title=title_char)+
+    xlab('Gene ratio')
+  return(plot)
+}
+
+merge_res <- function(tab_res, gen_num=1, p_filt=0.05, title_char, alp=1){
+  merged_table <- tab_res[(sapply(tab_res, nrow) > 0)] %>%
+    lapply(function(x) {
+      x %>% filter(Count > gen_num & p.adjust <= p_filt)
+    }) %>%
+    bind_rows() %>%
+    mutate(ratio = as.numeric(sub("/.*", "", GeneRatio)) / as.numeric(sub(".*/", "", GeneRatio))) 
+
+  plot <- merged_table %>% filter((duplicated(Description) | duplicated(Description, fromLast = TRUE)))  %>% 
+    #filter(ratio<1) %>% 
+    ggplot()+
+    geom_point(aes(x=ratio, y=Description, color=p.adjust, shape=ontology, size=factor(Count)), alpha=alp)+
+    scale_color_gradientn(colors = c("darkblue", "red"))+
+    labs(title=title_char, size='Count', shape='Ontology')+
+    scale_size_discrete()+
+    theme(plot.title = element_text(hjust = 0.5))+
+    xlab('Gene ratio')+
+    xlim(c(0, 1))
+  print(plot)
+  return(merged_table)
+}
+
+
 #Предобработка-----------------
 
 isols <- read_tsv("AIEC_isol.tsv") #Статусы патогенности изолятов
@@ -151,11 +191,17 @@ imp <- c('ECZV_18330','ECZV_18305','ECZV_18395','ECZV_20640','ECZV_19270') # 5 �
 targets <- tablo %>% filter(seq_name %in% paste(imp, 'Nucleoid-associated noncoding RNA 4 (CssrE)')) %>% pull(new_name) #получение обобщённых названий генов среди всех изолятов
 
 target_seqs <- tablo %>% filter(new_name %in% targets) %>% pull(seq_name) %>% gsub(' Nucleoid-associated noncoding RNA 4 \\(CssrE\\)', '', .) #Извлечение id генов внутри изолятов
-bakts <- tablo %>% filter(new_name %in% targets) %>% pull(seq_name) %>% gsub(' Nucleoid-associated noncoding RNA 4 \\(CssrE\\)', '', .) %>% gsub('_\\d+$', '', .) %>%  unique() #Получение списка изолятова
+bakts <- tablo %>% filter(new_name %in% targets) %>% pull(seq_name) %>% gsub(' Nucleoid-associated noncoding RNA 4 \\(CssrE\\)', '', .) %>% gsub('_\\d+$', '', .) %>%  unique() #Получение списка изолятов
+freqs <- tablo %>% filter(new_name %in% targets) %>% pull(seq_name) %>% gsub(' Nucleoid-associated noncoding RNA 4 \\(CssrE\\)', '', .) %>% gsub('_\\d+$', '', .) %>%  table() %>% as.data.frame() %>% rename('.'='File')
+
 #tablo %>% filter(new_name %in% targets) %>% pull(seq_name) %>%  gsub(' Nucleoid-associated noncoding RNA 4 \\(CssrE\\)', '', .) %>% gsub('_\\d+$', '', .) %>% table()
 
 contain_dir <- dir('bakta_isolates')[dir('bakta_isolates') %in% paste0('bakta_annotation_',bakts)]
 contained_tsv <- list.files(file.path('bakta_isolates', contain_dir), full.names = TRUE) %>% grep('\\d+\\.tsv$', ., value = T)
+isols %>% 
+  filter(File %in% (basename(contained_tsv) %>% sub('.tsv', '', ., fixed = T))) %>% 
+  dplyr::select(1, 4) %>% left_join(freqs, by='File') %>% rename('Freq'='Contained_genes') %>% arrange(desc(Contained_genes))
+
 gen_tables <- lapply(contained_tsv, read_anat_tab)
 
 
@@ -173,6 +219,9 @@ sapply(fultab_res_nd1, function(x){if (nrow(x) > 1) {
 } else {
   return(NA)}
 }) %>% unlist() %>% table() %>% sort()
+sapply(fultab_res_nd1, function(x){
+  x %>% filter(Count>2 & p.adjust<=0.05)
+}) %>% bind_rows() %>% pull(Description) %>% table()
 
 fultab_res_nd3 <- lapply(gen_tables, function(x){tab_analysis(x, n=3, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
 names(fultab_res_nd3) <- basename(contained_tsv) %>% sub('.tsv', '', ., fixed = T)
@@ -190,17 +239,36 @@ sapply(fultab_res_nd3, function(x){
   x %>% filter(Count>2 & p.adjust<=0.05)
 }) %>% bind_rows() %>% pull(Description) %>% table()
 
-plus_tabs_nd3 <- lapply(gen_tables, function(x){tab_analysis((x %>% filter(strand=='+')), n=3, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
+plus_tabs_nd3 <- lapply(gen_tables, function(x){tab_analysis((x %>% filter(strand=='+')), n=3, loc_tag=target_seqs, pcut=0.1, qcut=0.1, alt_tab=F)})
 names(plus_tabs_nd3) <- basename(contained_tsv) %>% sub('.tsv', '', ., fixed = T)
-sapply(plus_tabs_nd3, function(x){
-  if(nrow(x)>0){x  %>% filter(Count>1 & p.adjust<=0.01)}}) %>% 
-  bind_rows() %>% pull(Description) %>% table()%>% sort(decreasing = T)
-sapply(plus_tabs_nd3, function(x){
-  if(nrow(x)>0){x  %>% filter(Count>1 & p.adjust<=0.01)}}) %>% 
-  bind_rows() %>% pull(side) %>% table()
+me_plus_tabs_nd3 <- merge_res(plus_tabs_nd3, title_char='Plus strand, nd=3', alp=0.5, gen_num=1)
 
 minus_tabs_nd3 <- lapply(gen_tables, function(x){tab_analysis((x %>% filter(strand=='-')), n=3, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
 names(minus_tabs_nd3) <- basename(contained_tsv) %>% sub('.tsv', '', ., fixed = T)
+mer_minus_tabs_nd3 <- merge_res(minus_tabs_nd3, title_char='Minus strand, nd=3', alp=0.5, gen_num=1)
+tp <- mer_old_plus_tabs_nd3 %>% pull(side) %>% table()
+tm <- mer_minus_tabs_nd3 %>% pull(side) %>% table()
+tmm <- bind_rows(tp, tm) %>% as.data.frame()
+rownames(tmm) <- c('Plus', 'Minus')
+print(tmm)
+
+
+old_plus_tabs_nd3 <- lapply(gen_tables, function(x){tab_analysis((x %>% filter(strand=='+')), n=3, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
+names(old_plus_tabs_nd3) <- basename(contained_tsv) %>% sub('.tsv', '', ., fixed = T)
+mer_old_plus_tabs_nd3 <- merge_res(old_plus_tabs_nd3, title_char='Plus strand, nd=3', alp=0.5, gen_num=1)
+old_minus_tabs_nd3 <- lapply(gen_tables, function(x){tab_analysis((x %>% filter(strand=='-')), n=3, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
+names(old_minus_tabs_nd3) <- basename(contained_tsv) %>% sub('.tsv', '', ., fixed = T)
+mer_old_minus_tabs_nd3 <- merge_res(old_minus_tabs_nd3, title_char='Plus strand, nd=3', alp=0.5, gen_num=1)
+
+minus_tabs_nd3 <- lapply(gen_tables, function(x){tab_analysis((x %>% filter(strand=='-')), n=3, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})
+names(minus_tabs_nd3) <- basename(contained_tsv) %>% sub('.tsv', '', ., fixed = T)
+
+sapply(old_plus_tabs_nd3, function(x){
+  if(nrow(x)>0){x  %>% filter(Count>1 & p.adjust<=0.01)}}) %>% 
+  bind_rows() %>% pull(Description) %>% table()%>% sort(decreasing = T)
+sapply(old_plus_tabs_nd3, function(x){
+  if(nrow(x)>0){x  %>% filter(Count>1 & p.adjust<=0.01)}}) %>% 
+  bind_rows() %>% pull(side) %>% table()
 sapply(minus_tabs_nd3, function(x){
   if(nrow(x)>0){x  %>% filter(Count>1 & p.adjust<=0.01)}}) %>% 
   bind_rows() %>% pull(Description) %>% table() %>% sort(decreasing = T)
@@ -208,7 +276,7 @@ sapply(minus_tabs_nd3, function(x){
   if(nrow(x)>0){x  %>% filter(Count>1 & p.adjust<=0.01)}}) %>% 
   bind_rows() %>% pull(side) %>% table()
 
-#sapply(plus_tabs_nd3, nrow) %>% as.data.frame() %>% rownames_to_column(var='File') %>% rename('.'= 'n_row') %>% left_join(isols, by='File') %>% dplyr::select(1, 2, 5) %>% dplyr::slice(-1) 
+#sapply(old_plus_tabs_nd3, nrow) %>% as.data.frame() %>% rownames_to_column(var='File') %>% rename('.'= 'n_row') %>% left_join(isols, by='File') %>% dplyr::select(1, 2, 5) %>% dplyr::slice(-1) 
 #Имеет смысл сделать это раньше
 
 minus_tabs_nd3 <- lapply(gen_tables, function(x){tab_analysis((x %>% filter(strand=='-')), n=1, loc_tag=target_seqs, pcut=0.1, qcut=0.1)})

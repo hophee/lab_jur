@@ -77,7 +77,7 @@ alt_neighb <- function(nd, x, tag='naRNA4') {
 }
 
 get_plots <- function(nd, x, alt=T, loc_tag='naRNA4', title=''){
-  neib <- if(alt){alt_neighb(1, eczv, tag=loc_tag)}else{get_neighbor(nd, x, tag=loc_tag)}
+  neib <- if(alt){alt_neighb(1, x, tag=loc_tag)}else{get_neighbor(nd, x, tag=loc_tag)}
   fc_vec <-  neib %>%  group_by(ENTREZID) %>% 
     summarise(log2FoldChange = median(log2FoldChange)) %>% 
     dplyr::select(ENTREZID, log2FoldChange) %>% 
@@ -120,6 +120,6 @@ get_plots <- function(nd, x, alt=T, loc_tag='naRNA4', title=''){
   sapply(list(dog, gog, goh, goc, got, ked), print)
 }
 
-get_plots(1, eczv, title=' cluster`s edges')
-get_plots(3, eczv %>% filter(strand=='+'), title=', cluster`s edges, plus strand')
-get_plots(3, eczv %>% filter(strand=='-'), title=', cluster`s edges, minus strand')
+#get_plots(1, eczv, title=' cluster`s edges')
+get_plots(3, eczv, title=', ALL naRNA4, cluster`s edges')
+get_plots(3, eczv %>% filter(strand=='-'), title=', ALL naRNA4, cluster`s edges, minus strand')
