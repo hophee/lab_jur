@@ -24,3 +24,4 @@ bakt/bakta_isolates
 **/*.dnd
 **/*.xlsx
 mice_deconvoution/mouse
+crispr_auto/test_data
